@@ -39,6 +39,16 @@ func GetResourceType(name string) (tftypes.Type, error) {
 	return GetObjectTypeFromSchema(rsch), nil
 }
 
+// GetDataSourceType returns the tftypes.Type of a datasource of type 'name'
+func GetDataSourceType(name string) (tftypes.Type, error) {
+	sch := GetProviderDataSourceSchema()
+	rsch, ok := sch[name]
+	if !ok {
+		return tftypes.DynamicPseudoType, fmt.Errorf("unknown data source %q: cannot find schema", name)
+	}
+	return GetObjectTypeFromSchema(rsch), nil
+}
+
 // GetProviderResourceSchema contains the definitions of all supported resources
 func GetProviderResourceSchema() map[string]*tfprotov5.Schema {
 	waitForType := tftypes.Object{
@@ -141,6 +151,55 @@ func GetProviderResourceSchema() map[string]*tfprotov5.Schema {
 						Type:        tftypes.List{ElementType: tftypes.String},
 						Description: "List of manifest fields whose values can be altered by the API server during 'apply'. Defaults to: [\"metadata.annotations\", \"metadata.labels\"]",
 						Optional:    true,
+					},
+				},
+			},
+		},
+	}
+}
+
+// GetProviderDataSourceSchema contains the definitions of all supported data sources
+func GetProviderDataSourceSchema() map[string]*tfprotov5.Schema {
+	metadataType := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"name":      tftypes.String,
+			"namespace": tftypes.String,
+		},
+		// FIXME
+		// OptionalAttributes: map[string]struct{}{
+		// 	"namespace": {},
+		// },
+	}
+
+	return map[string]*tfprotov5.Schema{
+		"kubernetes_resource": {
+			Version: 1,
+			Block: &tfprotov5.SchemaBlock{
+				Attributes: []*tfprotov5.SchemaAttribute{
+					{
+						Name:        "metadata",
+						Type:        metadataType,
+						Required:    true,
+						Description: "A Kubernetes manifest describing the desired state of the resource in HCL format.",
+					},
+					{
+						Name:        "apiVersion",
+						Type:        tftypes.String,
+						Required:    true,
+						Description: "The resource apiVersion.",
+					},
+					{
+						Name:        "kind",
+						Type:        tftypes.String,
+						Required:    true,
+						Description: "The resource kind.",
+					},
+					{
+						Name:        "object",
+						Type:        tftypes.DynamicPseudoType,
+						Optional:    true,
+						Computed:    true,
+						Description: "The resulting resource state, as returned by the API server after applying the desired state from `manifest`.",
 					},
 				},
 			},
