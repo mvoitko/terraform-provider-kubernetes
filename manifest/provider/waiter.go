@@ -252,7 +252,7 @@ func FieldPathToTftypesPath(fieldPath string) (*tftypes.AttributePath, error) {
 	return path, nil
 }
 
-// FieldWaiter will wait for a resource that has a StatusViewer to
+// RolloutWaiter will wait for a resource that has a StatusViewer to
 // finish rolling out
 type RolloutWaiter struct {
 	resource     dynamic.ResourceInterface
