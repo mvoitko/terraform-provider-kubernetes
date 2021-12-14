@@ -43,6 +43,7 @@ func GetResourceType(name string) (tftypes.Type, error) {
 func GetProviderResourceSchema() map[string]*tfprotov5.Schema {
 	waitForType := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
+			"rollout": tftypes.Bool,
 			"fields": tftypes.Map{
 				AttributeType: tftypes.String,
 			},

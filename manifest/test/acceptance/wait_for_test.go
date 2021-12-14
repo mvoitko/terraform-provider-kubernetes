@@ -61,3 +61,45 @@ func TestKubernetesManifest_WaitForFields_Pod(t *testing.T) {
 		},
 	})
 }
+
+func TestKubernetesManifest_WaitForRollout_Deployment(t *testing.T) {
+	name := randName()
+	namespace := randName()
+
+	tf := tfhelper.RequireNewWorkingDir(t)
+	tf.SetReattachInfo(reattachInfo)
+	defer func() {
+		tf.RequireDestroy(t)
+		tf.Close()
+		k8shelper.AssertNamespacedResourceDoesNotExist(t, "apps/v1", "deployments", namespace, name)
+	}()
+
+	k8shelper.CreateNamespace(t, namespace)
+	defer k8shelper.DeleteResource(t, namespace, kubernetes.NewGroupVersionResource("v1", "namespaces"))
+
+	tfvars := TFVARS{
+		"namespace": namespace,
+		"name":      name,
+	}
+	tfconfig := loadTerraformConfig(t, "WaitFor/wait_for_rollout.tf", tfvars)
+	tf.RequireSetConfig(t, tfconfig)
+	tf.RequireInit(t)
+
+	startTime := time.Now()
+	tf.RequireApply(t)
+
+	k8shelper.AssertNamespacedResourceExists(t, "apps/v1", "deployments", namespace, name)
+
+	// NOTE We set a readinessProbe in the fixture with a delay of 10s
+	// so the apply should take at least 10 seconds to complete.
+	minDuration := time.Duration(5) * time.Second
+	applyDuration := time.Since(startTime)
+	if applyDuration < minDuration {
+		t.Fatalf("the apply should have taken at least %s", minDuration)
+	}
+
+	tfstate := tfstatehelper.NewHelper(tf.RequireState(t))
+	tfstate.AssertAttributeValues(t, tfstatehelper.AttributeValues{
+		"kubernetes_manifest.wait_for_rollout.wait_for.rollout": true,
+	})
+}
